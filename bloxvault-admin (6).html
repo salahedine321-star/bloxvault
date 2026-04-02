@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BloxVault Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --sidebar: #111318;
+    --card: #161920;
+    --border: #1e2229;
+    --accent: #ff4d00;
+    --text: #e8eaf0;
+    --muted: #5a5f70;
+    --success: #00c97a;
+    --danger: #ff3b5c;
+    --input-bg: #1a1d24;
+    --gold: #ffb800;
+    --blue: #4d9fff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Syne',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+
+  .sidebar { width:220px; min-height:100vh; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; left:0; top:0; bottom:0; z-index:10; }
+  .logo { padding:24px 20px 20px; border-bottom:1px solid var(--border); }
+  .logo-title { font-size:18px; font-weight:800; color:var(--accent); }
+  .logo-sub { font-size:10px; color:var(--muted); letter-spacing:2px; font-family:'Space Mono',monospace; }
+  .nav { flex:1; padding:16px 0; overflow-y:auto; }
+  .nav-section { font-size:10px; color:var(--muted); letter-spacing:2px; padding:12px 20px 6px; font-family:'Space Mono',monospace; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; cursor:pointer; font-size:14px; font-weight:600; color:var(--muted); border-left:2px solid transparent; transition:all 0.15s; }
+  .nav-item:hover { color:var(--text); background:rgba(255,255,255,0.03); }
+  .nav-item.active { color:var(--text); border-left-color:var(--accent); background:rgba(255,77,0,0.07); }
+  .signout { padding:16px 20px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; cursor:pointer; font-size:13px; color:var(--muted); transition:color 0.15s; font-weight:600; }
+  .signout:hover { color:var(--danger); }
+
+  .main { margin-left:220px; flex:1; padding:32px 36px; }
+  .page { display:none; }
+  .page.active { display:block; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .page-title { font-size:26px; font-weight:800; margin-bottom:4px; }
+  .page-sub { font-size:13px; color:var(--muted); margin-bottom:28px; }
+
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .card-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .card-sub { font-size:12px; color:var(--muted); margin-bottom:18px; }
+
+  .field { margin-bottom:16px; }
+  .field-label { font-size:11px; color:var(--muted); margin-bottom:5px; font-family:'Space Mono',monospace; letter-spacing:1px; }
+
+  input[type="text"], input[type="url"], textarea {
+    background:var(--input-bg); border:1px solid var(--border); border-radius:8px;
+    color:var(--text); font-family:'Space Mono',monospace; font-size:13px;
+    padding:11px 14px; width:100%; outline:none; transition:border 0.15s;
+  }
+  textarea { resize:vertical; min-height:70px; }
+  input:focus, textarea:focus { border-color:var(--accent); }
+
+  .btn { padding:10px 20px; border-radius:8px; border:none; cursor:pointer; font-family:'Syne',sans-serif; font-weight:700; font-size:13px; transition:all 0.15s; white-space:nowrap; }
+  .btn-primary { background:var(--accent); color:white; }
+  .btn-primary:hover { background:#e04400; }
+  .btn-secondary { background:var(--border); color:var(--text); }
+  .btn-danger { background:var(--danger); color:white; }
+  .btn-success { background:var(--success); color:#000; }
+  .btn-sm { padding:7px 14px; font-size:12px; }
+
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); }
+  .toggle-row:last-child { border-bottom:none; }
+  .toggle-label { font-size:14px; font-weight:600; }
+  .toggle-desc { font-size:11px; color:var(--accent); margin-top:2px; font-family:'Space Mono',monospace; }
+  .toggle { position:relative; width:46px; height:26px; flex-shrink:0; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; cursor:pointer; inset:0; background:var(--border); border-radius:26px; transition:0.2s; }
+  .slider:before { content:''; position:absolute; width:20px; height:20px; left:3px; bottom:3px; background:var(--muted); border-radius:50%; transition:0.2s; }
+  input:checked+.slider { background:var(--accent); }
+  input:checked+.slider:before { transform:translateX(20px); background:white; }
+
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; margin-bottom:24px; }
+  .stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .stat-value { font-size:22px; font-weight:800; color:var(--accent); font-family:'Space Mono',monospace; }
+  .stat-label { font-size:11px; color:var(--muted); letter-spacing:1px; margin-top:4px; font-family:'Space Mono',monospace; }
+
+  .preview-box { background:var(--input-bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12px; color:var(--muted); font-family:'Space Mono',monospace; margin-top:10px; word-break:break-all; }
+  .preview-label { font-size:10px; color:var(--muted); letter-spacing:1px; margin-bottom:4px; }
+
+  .presets-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+  .preset-card { background:var(--input-bg); border:1px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:all 0.2s; }
+  .preset-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .preset-card.active-preset { border-color:var(--accent); background:rgba(255,77,0,0.08); }
+  .preset-icon { font-size:20px; margin-bottom:6px; }
+  .preset-name { font-size:13px; font-weight:700; }
+  .preset-url { font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; }
+
+  .input-row { display:flex; gap:10px; align-items:flex-end; }
+  .input-row>div { flex:1; }
+
+  .toast { position:fixed; bottom:24px; right:24px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 20px; font-size:13px; font-weight:600; z-index:9999; transform:translateY(80px); opacity:0; transition:all 0.3s; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.success { border-color:var(--success); color:var(--success); }
+  .toast.error { border-color:var(--danger); color:var(--danger); }
+
+  .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .dot-green { background:var(--success); }
+  .dot-red { background:var(--danger); }
+  .dot-orange { background:var(--gold); }
+
+  code { color:var(--accent); font-family:'Space Mono',monospace; font-size:12px; }
+
+  .alert-box { background:rgba(255,184,0,0.07); border:1px solid rgba(255,184,0,0.25); border-radius:10px; padding:14px 18px; font-size:13px; color:var(--gold); display:flex; align-items:flex-start; gap:10px; margin-bottom:16px; }
+  .danger-box { background:rgba(255,59,92,0.07); border:1px solid rgba(255,59,92,0.25); border-radius:10px; padding:14px 18px; font-size:13px; color:var(--danger); margin-bottom:16px; }
+
+  .live-preview { background:var(--input-bg); border:1px solid var(--border); border-radius:8px; padding:14px; font-size:12px; font-family:'Space Mono',monospace; color:var(--muted); line-height:2; margin-top:8px; }
+
+  /* ANNOUNCEMENT PREVIEW */
+  .ann-preview { background:#ff3b5c; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:600; color:white; display:flex; align-items:center; gap:8px; margin-top:12px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">
+    <div style="font-size:22px;">🏆</div>
+    <div class="logo-title">BloxVault</div>
+    <div class="logo-sub">ADMIN PANEL</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">MAIN</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span>📊</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('claim',this)"><span>🔗</span> Claim Button</div>
+    <div class="nav-item" onclick="showPage('ads',this)"><span>📢</span> Ads Control</div>
+    <div class="nav-section">APP CONTROL</div>
+    <div class="nav-item" onclick="showPage('announcement',this)"><span>📣</span> Announcement</div>
+    <div class="nav-item" onclick="showPage('appcontrol',this)"><span>🛠️</span> App Control</div>
+    <div class="nav-section">SETTINGS</div>
+    <div class="nav-item" onclick="showPage('settings',this)"><span>⚙️</span> Settings</div>
+  </nav>
+  <div class="signout">← Sign Out</div>
+</div>
+
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">BloxVault live control center</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="stat-claim">—</div><div class="stat-label">CLAIM BTN</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-ads">—</div><div class="stat-label">ADS ON</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-quiz">—</div><div class="stat-label">QUIZ</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-maint">—</div><div class="stat-label">MAINTENANCE</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-ann">—</div><div class="stat-label">ANNOUNCEMENT</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">JSONBin Connection</div>
+      <div class="card-sub">Your iOS app reads from this bin on every launch</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        <span class="status-dot" id="conn-dot"></span>
+        <span id="conn-status">Checking…</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;">
+        BIN: 69bf45fdc3097a1dd548ed01<br>
+        DOMAIN: bloxvault.xyz
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Live JSON → iOS App</div>
+      <div class="card-sub">Exact data your app receives</div>
+      <pre id="json-preview" style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted);white-space:pre-wrap;word-break:break-all;line-height:1.7;">Loading…</pre>
+    </div>
+    <button class="btn btn-secondary" onclick="loadAll()">🔄 Sync from JSONBin</button>
+  </div>
+
+  <!-- CLAIM BUTTON -->
+  <div class="page" id="page-claim">
+    <div class="page-title">🔗 Claim Button</div>
+    <div class="page-sub">Control the claim button URL and visibility</div>
+    <div class="card">
+      <div class="card-title">⚡ Quick Presets</div>
+      <div class="card-sub">Click to instantly switch — saves automatically</div>
+      <div class="presets-grid" id="presets-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Custom URL</div>
+      <div class="input-row">
+        <div>
+          <div class="field-label">claimButtonURL</div>
+          <input type="url" id="claimButtonURL" placeholder="https://…" />
+        </div>
+        <button class="btn btn-primary" onclick="saveAll()">Save</button>
+      </div>
+      <div class="preview-box">
+        <div class="preview-label">CURRENT:</div>
+        <span id="claim-preview">—</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Button Visibility</div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Show Claim Button</div><div class="toggle-desc">claimButtonEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="claimButtonEnabled" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADS CONTROL -->
+  <div class="page" id="page-ads">
+    <div class="page-title">📢 Ads Control</div>
+    <div class="page-sub">Toggle ads and update Ad Unit IDs live</div>
+    <div class="card">
+      <div class="card-title">Ad Toggles</div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Banner Ads</div><div class="toggle-desc">bannerAdEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="bannerAdEnabled" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Interstitial Ads</div><div class="toggle-desc">interstitialAdEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="interstitialAdEnabled" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Rewarded Ads</div><div class="toggle-desc">rewardedAdEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="rewardedAdEnabled" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Quiz</div><div class="toggle-desc">quizEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="quizEnabled" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ad Unit IDs</div>
+      <div class="card-sub">Change ad IDs without updating the app</div>
+      <div class="field"><div class="field-label">bannerHomeAdUnitID</div><input type="text" id="bannerHomeAdUnitID" /></div>
+      <div class="field"><div class="field-label">bannerQuizAdUnitID</div><input type="text" id="bannerQuizAdUnitID" /></div>
+      <div class="field"><div class="field-label">interstitialAdUnitID</div><input type="text" id="interstitialAdUnitID" /></div>
+      <div class="field"><div class="field-label">rewardedAdUnitID</div><input type="text" id="rewardedAdUnitID" /></div>
+      <button class="btn btn-primary" onclick="saveAll()">💾 Save Ad IDs</button>
+    </div>
+  </div>
+
+  <!-- ANNOUNCEMENT -->
+  <div class="page" id="page-announcement">
+    <div class="page-title">📣 Announcement Banner</div>
+    <div class="page-sub">Show a banner message at the top of the app</div>
+    <div class="card">
+      <div class="card-title">Banner Toggle</div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Show Announcement</div><div class="toggle-desc">announcementEnabled</div></div>
+        <label class="toggle"><input type="checkbox" id="announcementEnabled" onchange="saveAll();updateAnnPreview()"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Banner Message</div>
+      <div class="card-sub">This text shows in the red banner at the top of the app</div>
+      <div class="field-label">announcementText</div>
+      <textarea id="announcementText" placeholder="e.g. 🎉 New codes just dropped! Check the Codes tab now!" oninput="updateAnnPreview()"></textarea>
+      <div id="ann-preview" style="display:none;" class="ann-preview">
+        <span>📣</span><span id="ann-preview-text"></span>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="saveAll()">💾 Save Banner</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Quick Templates</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="preset-card" onclick="setAnnText('🎉 New codes just dropped! Check the Codes tab now!')">🎉 New codes dropped</div>
+        <div class="preset-card" onclick="setAnnText('🔧 We are updating the app. Some features may be unavailable.')">🔧 Update in progress</div>
+        <div class="preset-card" onclick="setAnnText('⭐ Enjoying BloxVault? Please leave us a 5-star review!')">⭐ Ask for review</div>
+        <div class="preset-card" onclick="setAnnText('🏆 Daily quiz is live! Earn BloxCoins now!')">🏆 Daily quiz live</div>
+        <div class="preset-card" onclick="setAnnText('🎮 New Blox Fruits update codes available!')">🎮 New game codes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP CONTROL -->
+  <div class="page" id="page-appcontrol">
+    <div class="page-title">🛠️ App Control</div>
+    <div class="page-sub">Control app availability and updates</div>
+    <div class="card">
+      <div class="card-title">Maintenance Mode</div>
+      <div class="card-sub">When ON — users see a maintenance screen instead of the app</div>
+      <div class="toggle-row">
+        <div><div class="toggle-label" style="color:var(--danger);">🔧 Maintenance Mode</div><div class="toggle-desc">maintenanceMode</div></div>
+        <label class="toggle"><input type="checkbox" id="maintenanceMode" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Force Update</div>
+      <div class="card-sub">When ON — users must update the app before using it</div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Force Update</div><div class="toggle-desc">forceUpdate</div></div>
+        <label class="toggle"><input type="checkbox" id="forceUpdate" onchange="saveAll()"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Minimum App Version</div>
+      <div class="card-sub">Users below this version are prompted to update</div>
+      <div class="field-label">minVersion</div>
+      <div class="input-row">
+        <div><input type="text" id="minVersion" placeholder="1.0.0" /></div>
+        <button class="btn btn-primary" onclick="saveAll()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="page-title">⚙️ Settings</div>
+    <div class="page-sub">Connection details and custom presets</div>
+    <div class="card">
+      <div class="card-title">JSONBin Details</div>
+      <div class="live-preview">
+        BIN ID &nbsp;&nbsp;&nbsp;→ 69bf45fdc3097a1dd548ed01<br>
+        DOMAIN &nbsp;&nbsp;→ bloxvault.xyz<br>
+        ADMIN &nbsp;&nbsp;&nbsp;→ bloxvault.xyz/bloxvault-admin.html
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:14px;" onclick="loadAll()">🔄 Force Sync</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Add Custom Preset</div>
+      <div style="display:grid;grid-template-columns:60px 1fr 1fr auto;gap:10px;align-items:flex-end;">
+        <div><div class="field-label">ICON</div><input type="text" id="pi" placeholder="🌐" /></div>
+        <div><div class="field-label">NAME</div><input type="text" id="pn" placeholder="My Page" /></div>
+        <div><div class="field-label">URL</div><input type="url" id="pu" placeholder="https://…" /></div>
+        <button class="btn btn-primary" onclick="addPreset()">+ Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--danger);">Danger Zone</div>
+      <div class="card-sub">Reset all config to defaults</div>
+      <button class="btn btn-danger btn-sm" onclick="resetDefaults()">⚠️ Reset to Defaults</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BIN_ID = '69bf45fdc3097a1dd548ed01';
+const MASTER = '$2a$10$s1LKYL7IdyHZj11K087Nme3cWlkwoeUeaI/F2lykJAm9DgXDEYNb2';
+const ACCESS = '$2a$10$yJUMgt8WTlU2Po9SVxTU8.IlAFCOD0iPQbykkcLQHzt/rh7zqBAia';
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+const DEFAULTS = {
+  claimButtonURL: "https://bloxvault.xyz",
+  claimButtonEnabled: true,
+  bannerAdEnabled: true,
+  interstitialAdEnabled: true,
+  rewardedAdEnabled: true,
+  quizEnabled: true,
+  bannerHomeAdUnitID: "ca-app-pub-7794222621454602/3006925646",
+  bannerQuizAdUnitID: "ca-app-pub-3940256099942544/2934735716",
+  interstitialAdUnitID: "ca-app-pub-3940256099942544/4411468910",
+  rewardedAdUnitID: "ca-app-pub-3940256099942544/1712485313",
+  maintenanceMode: false,
+  forceUpdate: false,
+  minVersion: "1.0.0",
+  announcementEnabled: false,
+  announcementText: ""
+};
+
+let PRESETS = [
+  { icon:'🏠', name:'Landing Page', url:'https://bloxvault.xyz', desc:'Main website' },
+  { icon:'🎮', name:'Generator', url:'https://bloxvault.xyz/index.html', desc:'Robux generator' },
+  { icon:'🍎', name:'App Store', url:'https://apps.apple.com/app/bloxvault/id6760878110', desc:'Download page' },
+  { icon:'⭐', name:'Rate App', url:'https://apps.apple.com/app/bloxvault/id6760878110?action=write-review', desc:'Leave review' },
+];
+
+function loadCustomPresets() {
+  try { const s=localStorage.getItem('bv_presets'); if(s) PRESETS=[...PRESETS.slice(0,4),...JSON.parse(s)]; } catch(e){}
+}
+function saveCustomPresets() {
+  try { localStorage.setItem('bv_presets',JSON.stringify(PRESETS.slice(4))); } catch(e){}
+}
+function addPreset() {
+  const icon=document.getElementById('pi').value.trim()||'🌐';
+  const name=document.getElementById('pn').value.trim();
+  const url=document.getElementById('pu').value.trim();
+  if(!name||!url) return showToast('Fill in name and URL','error');
+  PRESETS.push({icon,name,url,desc:url.replace('https://','').split('/')[0]});
+  saveCustomPresets(); renderPresets();
+  ['pi','pn','pu'].forEach(id=>document.getElementById(id).value='');
+  showToast('Preset added ✓','success');
+}
+
+let cfg = {...DEFAULTS};
+
+async function readBin() {
+  const r = await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':MASTER,'X-Access-Key':ACCESS}});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return (await r.json()).record;
+}
+async function writeBin(data) {
+  const r = await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':MASTER,'X-Access-Key':ACCESS},body:JSON.stringify(data)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+}
+
+async function loadAll() {
+  try {
+    const data = await readBin();
+    if(data && typeof data==='object') cfg={...DEFAULTS,...data};
+    render(); setConn(true); showToast('Synced ✓','success');
+  } catch(e) { setConn(false); showToast('Failed: '+e.message,'error'); render(); }
+}
+
+function render() {
+  const s = id => document.getElementById(id);
+  s('claimButtonURL').value          = cfg.claimButtonURL||'';
+  s('claim-preview').textContent     = cfg.claimButtonURL||'—';
+  s('claimButtonEnabled').checked    = !!cfg.claimButtonEnabled;
+  s('bannerAdEnabled').checked       = !!cfg.bannerAdEnabled;
+  s('interstitialAdEnabled').checked = !!cfg.interstitialAdEnabled;
+  s('rewardedAdEnabled').checked     = !!cfg.rewardedAdEnabled;
+  s('quizEnabled').checked           = !!cfg.quizEnabled;
+  s('bannerHomeAdUnitID').value      = cfg.bannerHomeAdUnitID||'';
+  s('bannerQuizAdUnitID').value      = cfg.bannerQuizAdUnitID||'';
+  s('interstitialAdUnitID').value    = cfg.interstitialAdUnitID||'';
+  s('rewardedAdUnitID').value        = cfg.rewardedAdUnitID||'';
+  s('maintenanceMode').checked       = !!cfg.maintenanceMode;
+  s('forceUpdate').checked           = !!cfg.forceUpdate;
+  s('minVersion').value              = cfg.minVersion||'1.0.0';
+  s('announcementEnabled').checked   = !!cfg.announcementEnabled;
+  s('announcementText').value        = cfg.announcementText||'';
+  // Dashboard stats
+  s('stat-claim').textContent  = cfg.claimButtonEnabled ? 'ON' : 'OFF';
+  const adsOn = ['bannerAdEnabled','interstitialAdEnabled','rewardedAdEnabled'].filter(k=>cfg[k]).length;
+  s('stat-ads').textContent    = adsOn+'/3';
+  s('stat-quiz').textContent   = cfg.quizEnabled ? 'ON' : 'OFF';
+  s('stat-maint').textContent  = cfg.maintenanceMode ? '🔧 ON' : 'OFF';
+  s('stat-ann').textContent    = cfg.announcementEnabled ? 'ON' : 'OFF';
+  s('json-preview').textContent = JSON.stringify(cfg,null,2);
+  updateAnnPreview();
+  renderPresets();
+}
+
+async function saveAll() {
+  const s = id => document.getElementById(id);
+  cfg.claimButtonURL        = s('claimButtonURL').value.trim();
+  cfg.claimButtonEnabled    = s('claimButtonEnabled').checked;
+  cfg.bannerAdEnabled       = s('bannerAdEnabled').checked;
+  cfg.interstitialAdEnabled = s('interstitialAdEnabled').checked;
+  cfg.rewardedAdEnabled     = s('rewardedAdEnabled').checked;
+  cfg.quizEnabled           = s('quizEnabled').checked;
+  cfg.bannerHomeAdUnitID    = s('bannerHomeAdUnitID').value.trim();
+  cfg.bannerQuizAdUnitID    = s('bannerQuizAdUnitID').value.trim();
+  cfg.interstitialAdUnitID  = s('interstitialAdUnitID').value.trim();
+  cfg.rewardedAdUnitID      = s('rewardedAdUnitID').value.trim();
+  cfg.maintenanceMode       = s('maintenanceMode').checked;
+  cfg.forceUpdate           = s('forceUpdate').checked;
+  cfg.minVersion            = s('minVersion').value.trim();
+  cfg.announcementEnabled   = s('announcementEnabled').checked;
+  cfg.announcementText      = s('announcementText').value.trim();
+  try { await writeBin(cfg); render(); showToast('Saved to JSONBin ✓','success'); }
+  catch(e) { showToast('Save failed: '+e.message,'error'); }
+}
+
+function setPreset(url) {
+  document.getElementById('claimButtonURL').value = url;
+  document.getElementById('claim-preview').textContent = url;
+  renderPresets(); saveAll();
+}
+
+function renderPresets() {
+  const cur = document.getElementById('claimButtonURL').value;
+  document.getElementById('presets-grid').innerHTML = PRESETS.map(p=>`
+    <div class="preset-card ${cur===p.url?'active-preset':''}" onclick="setPreset('${p.url}')">
+      <div class="preset-icon">${p.icon}</div>
+      <div class="preset-name">${p.name}</div>
+      <div class="preset-url">${p.desc}</div>
+    </div>
+  `).join('');
+}
+
+function setAnnText(text) {
+  document.getElementById('announcementText').value = text;
+  updateAnnPreview();
+}
+
+function updateAnnPreview() {
+  const text = document.getElementById('announcementText').value;
+  const enabled = document.getElementById('announcementEnabled').checked;
+  const preview = document.getElementById('ann-preview');
+  if(text && enabled) {
+    preview.style.display = 'flex';
+    document.getElementById('ann-preview-text').textContent = text;
+  } else { preview.style.display = 'none'; }
+}
+
+function resetDefaults() {
+  if(!confirm('Reset everything to default values?')) return;
+  cfg = {...DEFAULTS}; render();
+  writeBin(cfg).then(()=>showToast('Reset ✓','success'));
+}
+
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+}
+
+function setConn(ok) {
+  document.getElementById('conn-dot').className = 'status-dot '+(ok?'dot-green':'dot-red');
+  document.getElementById('conn-status').textContent = ok?'Connected to JSONBin ✓':'Connection failed';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+type+' show';
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+document.getElementById('claimButtonURL').addEventListener('input',function(){
+  document.getElementById('claim-preview').textContent=this.value||'—';
+  renderPresets();
+});
+
+loadCustomPresets();
+loadAll();
+</script>
+</body>
+</html>
